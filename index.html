@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#05140d" />
+  <title>Padel Arena — Tournament Bracket & Score Counter</title>
+  <meta name="description" content="Responsive Padel tournament app with live score counter, knockout bracket, and random matchmaking. Data persists in your browser." />
+
+  <!-- Favicon (uploaded logo) -->
+  <link rel="icon" type="image/png" href="favicon.png" />
+  <link rel="apple-touch-icon" href="logo.png" />
+  <link rel="shortcut icon" href="favicon.png" />
+
+  <link rel="stylesheet" href="styles.css" />
+
+  <!-- ============================================================
+       Google AdSense (publisher placeholder)
+       Replace ca-pub-XXXXXXXXXXXXXXXX with your real publisher ID
+       and add data-ad-slot attributes per ad unit below.
+       ============================================================ -->
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXXXXXXXX" crossorigin="anonymous"></script>
+</head>
+<body>
+  <!-- Decorative background layers -->
+  <div class="padel-arena-bg" aria-hidden="true"></div>
+  <div class="padel-arena-grid" aria-hidden="true"></div>
+  <div class="padel-orb padel-orb-1" aria-hidden="true"></div>
+  <div class="padel-orb padel-orb-2" aria-hidden="true"></div>
+  <div class="padel-orb padel-orb-3" aria-hidden="true"></div>
+
+  <div class="app">
+    <!-- Top header -->
+    <header class="app-header">
+      <div class="brand">
+        <img src="logo.png" alt="Padel Arena logo" class="brand-logo" />
+        <div class="brand-text">
+          <h1>Padel <span class="accent">Arena</span></h1>
+          <p>Tournament Bracket &amp; Live Score Counter</p>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <div class="player-badge">
+          <span class="trophy-icon">★</span>
+          <span class="badge-count" id="player-count">0</span>
+          <span class="badge-label">players</span>
+        </div>
+        <!-- Team-logo button — only visible when the lineup panel is hidden -->
+        <button class="team-logo-btn hidden" id="show-bracket-btn" aria-label="Show team lineup and bracket" title="Show team lineup & bracket">
+          <img src="logo.png" alt="Show lineup" />
+          <span class="team-logo-badge" id="team-logo-badge">0</span>
+        </button>
+        <!-- Lineup toggle button — shows/hides the entire Add Players panel (squad + bracket) -->
+        <button class="lineup-toggle-btn" id="lineup-toggle-btn" aria-label="Toggle lineup panel" aria-expanded="false" title="Show / hide squad & teams">
+          <span class="icon">👥</span>
+          <span class="lbl">Lineup</span>
+        </button>
+        <button class="add-players-btn" id="open-add-players" aria-label="Add Players" aria-expanded="false" aria-controls="team-formation-panel">
+          <span class="icon">+</span>
+          <span>Add Players</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Top Ad Slot -->
+    <div class="ad-slot ad-top" aria-label="Advertisement">
+      <div class="ad-label">Advertisement</div>
+      <div class="ad-content" id="ad-top">
+        <!-- Google Adsense ad unit (replace with your slot ID) -->
+        <ins class="adsbygoogle"
+             style="display:block"
+             data-ad-client="ca-pub-XXXXXXXXXXXXXXXX"
+             data-ad-slot="1111111111"
+             data-ad-format="auto"
+             data-full-width-responsive="true"></ins>
+        <div class="ad-placeholder">Your Ad Here · 728×90 / Responsive</div>
+      </div>
+    </div>
+
+    <!-- ============================================================
+         LINEUP PANEL — wraps the squad/team-formation panel + bracket/teams view.
+         Hidden by default. Toggled by the "Lineup" button next to "Add Players".
+         When hidden, only ads + score counter remain on screen.
+         ============================================================ -->
+    <div class="lineup-panel hidden-panel" id="lineup-panel" aria-label="Squad and team lineup">
+
+      <!-- Team Formation Panel (squad roster + 2v2 pairings) -->
+      <section class="team-formation-panel" id="team-formation-panel" aria-label="Team formation">
+        <div class="tf-header">
+          <div class="tf-title-wrap">
+            <span class="tf-icon">👥</span>
+            <div>
+              <h2 class="tf-title">Team Formation</h2>
+              <p class="tf-sub" id="tf-subtitle">Add players — teams will be auto-paired 2 vs 2</p>
+            </div>
+          </div>
+          <div class="tf-actions">
+            <button class="ghost-btn small" id="tf-shuffle-teams" title="Re-pair teams">
+              <span>⤮</span><span class="lbl">Re-pair Teams</span>
+            </button>
+            <button class="ghost-btn small" id="tf-toggle" title="Collapse" aria-expanded="true">
+              <span class="tf-chevron">▲</span><span class="lbl">Collapse</span>
+            </button>
+          </div>
+        </div>
+        <div class="tf-body" id="tf-body">
+          <div class="tf-roster-section">
+            <div class="tf-field-label">Roster (<span id="tf-roster-count">0</span>)</div>
+            <div class="tf-roster-chips" id="tf-roster-chips"></div>
+            <div class="tf-add-row">
+              <input type="text" class="player-input" id="tf-quick-input"
+                     placeholder="Add a player name, press Enter" maxlength="40" />
+              <button class="primary-btn small" id="tf-quick-add">+ Add</button>
+              <button class="ghost-btn small danger" id="tf-clear-all">🗑 Clear</button>
+            </div>
+          </div>
+
+          <div class="tf-teams-grid" id="tf-teams-grid">
+            <!-- Teams rendered here -->
+          </div>
+
+          <div class="tf-hint" id="tf-hint">
+            Add at least 4 players to form two complete 2v2 teams.
+          </div>
+
+          <div class="tf-footer-actions">
+            <button class="action-btn red" id="tf-random-matchmaking">⤮ Random Matchmaking</button>
+            <button class="action-btn blue" id="tf-generate-bracket">🏆 Generate Bracket</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Bracket / Lineup map (teams view) -->
+      <section class="bracket-section glass-card" id="bracket-section" aria-label="Tournament bracket">
+        <div class="bracket-header">
+          <div class="bracket-title">
+            <img src="logo.png" alt="" class="bracket-logo" />
+            <div class="bracket-title-text">
+              <h2 id="bracket-title">Tournament Hub</h2>
+              <p id="bracket-subtitle">Add players to begin</p>
+            </div>
+          </div>
+          <div class="bracket-actions">
+            <button class="ghost-btn hidden" id="reset-bracket-btn" title="Reset bracket">
+              <span>↺</span><span class="lbl">Reset</span>
+            </button>
+            <button class="ghost-btn hidden" id="shuffle-btn" title="Shuffle all players">
+              <span>⤮</span><span class="lbl">Shuffle</span>
+            </button>
+            <!-- Minimize button — hides the lineup panel (squad + bracket), shows the team-logo button -->
+            <button class="ghost-btn" id="minimize-bracket-btn" title="Hide lineup">
+              <span class="minimize-icon">—</span><span class="lbl">Hide</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="bracket-body" id="bracket-body">
+          <!-- Empty state -->
+          <div class="empty-state" id="empty-state">
+            <div class="empty-court-wrap">
+              <img src="logo.png" alt="Padel Arena" class="empty-logo" />
+              <div class="empty-trophy">🏆</div>
+            </div>
+            <h3>Build your Padel tournament</h3>
+            <p>Tap <span class="accent">Add Players</span> to register players (4+), then auto-form
+              2v2 teams and generate a knockout bracket — or use random matchmaking.</p>
+          </div>
+        </div>
+      </section>
+
+    </div>
+    <!-- /LINEUP PANEL -->
+
+    <!-- Main split: score counter is the primary view -->
+    <main class="main-split">
+      <!-- Primary section — Score Counter (points are the primary basis) -->
+      <section class="score-section" id="score-section" aria-label="Score counter">
+        <!-- Filled dynamically by JS -->
+      </section>
+    </main>
+
+    <!-- Middle Ad Slot (between main content and footer) -->
+    <div class="ad-slot ad-middle" aria-label="Advertisement">
+      <div class="ad-label">Advertisement</div>
+      <div class="ad-content" id="ad-middle">
+        <ins class="adsbygoogle"
+             style="display:block"
+             data-ad-client="ca-pub-XXXXXXXXXXXXXXXX"
+             data-ad-slot="2222222222"
+             data-ad-format="auto"
+             data-full-width-responsive="true"></ins>
+        <div class="ad-placeholder">Your Ad Here · Responsive Banner</div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+      <span id="footer-text">Tap <span class="accent">Add Players</span> to start your Padel tournament · data persists in your browser</span>
+    </footer>
+  </div>
+
+  <!-- Add Players Modal (kept for richer setup experience) -->
+  <div class="modal-overlay hidden" id="add-players-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div class="modal glass-card-strong">
+      <div class="modal-header">
+        <h2 id="modal-title">👥 Tournament Setup</h2>
+        <button class="close-btn" id="close-modal" aria-label="Close">✕</button>
+      </div>
+      <p class="modal-desc">Add players — the system will auto-form two 2-player teams for each match. Generate a knockout bracket or use random matchmaking.</p>
+
+      <div class="player-summary">
+        <div class="player-count-circle" id="modal-player-count">0</div>
+        <div class="summary-text">
+          <div class="summary-label">Players Registered</div>
+          <div class="summary-hint" id="summary-hint">Add at least 4 to form 2v2 teams</div>
+        </div>
+        <button class="ghost-btn small danger" id="clear-all-btn">🗑 Clear All</button>
+      </div>
+
+      <div class="roster-section">
+        <label class="field-label">Roster</label>
+        <div class="roster-chips" id="roster-chips"></div>
+      </div>
+
+      <div class="add-inputs-section">
+        <label class="field-label">Add Players</label>
+        <div class="inputs-grid" id="inputs-grid"></div>
+        <button class="primary-btn" id="add-to-roster-btn">+ Add to Roster</button>
+      </div>
+
+      <div class="modal-footer">
+        <button class="action-btn red" id="random-matchmaking-btn">⤮ Random Matchmaking</button>
+        <button class="action-btn blue" id="generate-bracket-btn">🏆 Generate Bracket</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast container -->
+  <div class="toast-container" id="toast-container" aria-live="polite"></div>
+
+  <script src="script.js"></script>
+</body>
+</html>
